@@ -8,10 +8,10 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "nodemailer": "^10.2.1",
-    "sqlite3": "5.1.7"
+    "nodemailer": "^10.2.1"
   }
 }

@@ -1,25 +1,55 @@
 require("dotenv").config();
 
 const crypto = require("node:crypto");
-const fs = require("node:fs");
 const path = require("node:path");
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
+const { createClient } = require("@libsql/client");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-const bundledDatabasePath = path.join(process.cwd(), "database.db");
-const databasePath = process.env.VERCEL
-  ? path.join("/tmp", "database.db")
-  : path.join(process.cwd(), "database.db");
 
-if (process.env.VERCEL && fs.existsSync(bundledDatabasePath)) {
-  fs.copyFileSync(bundledDatabasePath, databasePath);
+if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
+  throw new Error("Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN to connect to Turso.");
 }
 
-const database = new sqlite3.Database(databasePath);
+const databaseClient = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+const database = {
+  run(sql, parameters, callback) {
+    if (typeof parameters === "function") {
+      callback = parameters;
+      parameters = [];
+    }
+
+    databaseClient.execute({ sql, args: parameters }).then(
+      (result) => callback.call({
+        lastID: Number(result.lastInsertRowid || 0),
+        changes: result.rowsAffected,
+      }, null),
+      (error) => {
+        const callbackError = typeof error.code === "string" && error.code.startsWith("SQLITE_CONSTRAINT")
+          ? Object.assign(new Error(error.message), { code: "SQLITE_CONSTRAINT" })
+          : error;
+        callback.call({ lastID: 0, changes: 0 }, callbackError);
+      }
+    );
+  },
+  get(sql, parameters, callback) {
+    if (typeof parameters === "function") {
+      callback = parameters;
+      parameters = [];
+    }
+
+    databaseClient.execute({ sql, args: parameters }).then(
+      (result) => callback(null, result.rows[0]),
+      (error) => callback(error)
+    );
+  },
+};
 const sessions = new Map();
 const recoveryCodes = new Map();
 const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -44,21 +74,17 @@ app.get("/script.js", (request, response) => {
   response.sendFile(path.join(__dirname, "script.js"));
 });
 
-database.run(
-  `CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
-  (error) => {
-    if (error) {
-      console.error("Could not initialize the users table:", error.message);
-      process.exitCode = 1;
-    }
-  }
-);
+async function initializeDatabase() {
+  await databaseClient.execute({
+    sql: `CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+  });
+}
 
 function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -299,9 +325,16 @@ app.post("/api/logout", (request, response) => {
 });
 
 if (require.main === module) {
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`Apex Battlegrounds is running at http://localhost:${port}`);
-  });
+  initializeDatabase()
+    .then(() => {
+      app.listen(port, "0.0.0.0", () => {
+        console.log(`Apex Battlegrounds is running at http://localhost:${port}`);
+      });
+    })
+    .catch((error) => {
+      console.error("Could not initialize the users table:", error.message);
+      process.exitCode = 1;
+    });
 }
 
 module.exports = app;
