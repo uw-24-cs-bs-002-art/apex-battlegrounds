@@ -1,6 +1,8 @@
 require("dotenv").config();
 
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
@@ -9,7 +11,16 @@ const nodemailer = require("nodemailer");
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-const database = new sqlite3.Database(path.join(__dirname, "database.db"));
+const bundledDatabasePath = path.join(__dirname, "database.db");
+const databasePath = process.env.VERCEL
+  ? path.join(os.tmpdir(), "database.db")
+  : bundledDatabasePath;
+
+if (process.env.VERCEL) {
+  fs.copyFileSync(bundledDatabasePath, databasePath);
+}
+
+const database = new sqlite3.Database(databasePath);
 const sessions = new Map();
 const recoveryCodes = new Map();
 const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
