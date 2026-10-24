@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080b12">
+    <meta name="description" content="Enter the arena. Join Apex Battlegrounds.">
+    <title>Apex Battlegrounds | Enter the Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="splash" id="splash" aria-label="Loading Apex Battlegrounds">
+      <div class="splash-content">
+        <div class="splash-mark" aria-hidden="true">A</div>
+        <p class="eyebrow">PREPARE FOR DEPLOYMENT</p>
+        <h1>Apex <span>Battlegrounds</span></h1>
+        <div class="loading-track" role="progressbar" aria-label="Loading game" aria-valuemin="0" aria-valuemax="100">
+          <div class="loading-progress"></div>
+        </div>
+        <p class="loading-caption">INITIALIZING COMBAT SYSTEMS</p>
+      </div>
+    </div>
+
+    <main class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Apex Battlegrounds home">
+          <span class="brand-symbol">A</span>
+          <span>APEX <b>BATTLEGROUNDS</b></span>
+        </a>
+        <div class="server-status"><span class="status-dot"></span> ALL SYSTEMS OPERATIONAL</div>
+      </header>
+
+      <section class="auth-layout" id="auth-layout" aria-label="Player access">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> THE ARENA IS WAITING</p>
+          <h2>DROP IN.<br><span>RISE ABOVE.</span></h2>
+          <p class="hero-description">Squad up. Gear up. Make every move count. Your next match starts here.</p>
+          <div class="hero-stats" aria-label="Game highlights">
+            <div><strong>01</strong><span>CHOOSE YOUR<br>LOADOUT</span></div>
+            <div><strong>02</strong><span>ENTER THE<br>BATTLEGROUND</span></div>
+            <div><strong>03</strong><span>CLAIM YOUR<br>LEGACY</span></div>
+          </div>
+          <div class="hero-coordinate">SECTOR 07 <span>//</span> FRONTIER ZONE</div>
+        </div>
+
+        <section class="auth-card" id="auth-card" aria-labelledby="auth-title">
+          <div class="card-topline"><span>PLAYER ACCESS</span><span>AB-07</span></div>
+          <div class="card-heading">
+            <p class="eyebrow">WELCOME TO THE FRONTLINE</p>
+            <h2 id="auth-title">Enter the arena</h2>
+            <p class="muted">Your squad is one move away.</p>
+          </div>
+
+          <div class="auth-tabs" role="tablist" aria-label="Account access">
+            <button class="auth-tab active" id="login-tab" type="button" role="tab" aria-selected="true" aria-controls="login-panel">Login</button>
+            <button class="auth-tab" id="register-tab" type="button" role="tab" aria-selected="false" aria-controls="register-panel">Register</button>
+          </div>
+
+          <form class="auth-form active" id="login-panel" data-mode="login" role="tabpanel" aria-labelledby="login-tab">
+            <label class="field-label" for="login-email">EMAIL ADDRESS</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">✉</span>
+              <input id="login-email" name="email" type="email" placeholder="player@gmail.com" autocomplete="email" required>
+            </div>
+            <div class="label-row">
+              <label class="field-label" for="login-password">PASSWORD</label>
+              <button class="text-button forgot-link" type="button">Forgot password?</button>
+            </div>
+            <div class="input-wrap">
+              <span class="input-icon lock-icon" aria-hidden="true">▣</span>
+              <input id="login-password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+              <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <p class="form-message" aria-live="polite"></p>
+            <button class="primary-button" type="submit"><span>DEPLOY TO ARENA</span><span aria-hidden="true">↗</span></button>
+            <div class="divider"><span>OR</span></div>
+            <button class="guest-button" type="button">◈ <span>Play as Guest</span></button>
+            <p class="form-footnote">New recruit? <button class="text-button switch-register" type="button">Create an account</button></p>
+          </form>
+
+          <form class="auth-form" id="register-panel" data-mode="register" role="tabpanel" aria-labelledby="register-tab" hidden>
+            <label class="field-label" for="register-username">PLAYER CALLSIGN</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">◉</span>
+              <input id="register-username" name="username" type="text" placeholder="Your callsign" autocomplete="nickname" minlength="2" maxlength="30" required>
+            </div>
+            <label class="field-label" for="register-email">EMAIL ADDRESS</label>
+            <div class="input-wrap">
+              <span class="input-icon" aria-hidden="true">✉</span>
+              <input id="register-email" name="email" type="email" placeholder="player@gmail.com" autocomplete="email" required>
+            </div>
+            <label class="field-label" for="register-password">PASSWORD</label>
+            <div class="input-wrap">
+              <span class="input-icon lock-icon" aria-hidden="true">▣</span>
+              <input id="register-password" name="password" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required>
+              <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <p class="form-message" aria-live="polite"></p>
+            <button class="primary-button" type="submit"><span>CREATE YOUR ACCOUNT</span><span aria-hidden="true">↗</span></button>
+            <div class="divider"><span>OR</span></div>
+            <button class="guest-button" type="button">◈ <span>Play as Guest</span></button>
+            <p class="form-footnote">Already in the field? <button class="text-button switch-login" type="button">Login</button></p>
+          </form>
+        </section>
+
+        <section class="welcome-card" id="welcome-card" hidden aria-live="polite">
+          <div class="welcome-icon">✓</div>
+          <p class="eyebrow">DEPLOYMENT CONFIRMED</p>
+          <h2>Welcome,<br><span id="welcome-name">Player</span></h2>
+          <p class="muted" id="welcome-copy">Your squad is ready. The arena is yours.</p>
+          <button class="primary-button" id="logout-button" type="button"><span>RETURN TO LOGIN</span><span aria-hidden="true">↗</span></button>
+        </section>
+
+        <div class="recovery-backdrop" id="recovery-backdrop" hidden>
+          <section class="recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title">
+            <button class="modal-close" id="close-recovery" type="button" aria-label="Close recovery dialog">×</button>
+            <div class="modal-symbol" aria-hidden="true">⌁</div>
+            <p class="eyebrow">ACCOUNT RECOVERY</p>
+            <h2 id="recovery-title">Regain access</h2>
+            <p class="muted" id="recovery-description">Enter the email linked to your account and we’ll send you a recovery code.</p>
+            <form id="request-code-form">
+              <label class="field-label" for="recovery-email">EMAIL ADDRESS</label>
+              <div class="input-wrap">
+                <span class="input-icon" aria-hidden="true">✉</span>
+                <input id="recovery-email" name="email" type="email" placeholder="player@gmail.com" autocomplete="email" required>
+              </div>
+              <p class="form-message" aria-live="polite"></p>
+              <button class="primary-button" type="submit"><span>SEND RECOVERY CODE</span><span aria-hidden="true">↗</span></button>
+            </form>
+            <form id="verify-code-form" hidden>
+              <label class="field-label" for="recovery-otp">6-DIGIT CODE</label>
+              <div class="input-wrap">
+                <span class="input-icon" aria-hidden="true">⌑</span>
+                <input id="recovery-otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+              </div>
+              <label class="field-label" for="new-password">NEW PASSWORD</label>
+              <div class="input-wrap">
+                <span class="input-icon lock-icon" aria-hidden="true">▣</span>
+                <input id="new-password" name="password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required>
+                <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+              <p class="form-message" aria-live="polite"></p>
+              <button class="primary-button" type="submit"><span>UPDATE PASSWORD</span><span aria-hidden="true">↗</span></button>
+              <button class="text-button resend-link" type="button">Send a new code</button>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <span>© 2025 APEX BATTLEGROUNDS</span>
+        <span>BUILT FOR THE BRAVE <b>◆</b></span>
+      </footer>
+    </main>
+  </body>
+</html>
