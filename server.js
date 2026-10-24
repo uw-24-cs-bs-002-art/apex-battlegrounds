@@ -288,6 +288,10 @@ app.post("/api/logout", (request, response) => {
   return response.json({ message: "Signed out." });
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Apex Battlegrounds is running at http://localhost:${port}`);
-});
+if (require.main === module) {
+  app.listen(port, "0.0.0.0", () => {
+    console.log(`Apex Battlegrounds is running at http://localhost:${port}`);
+  });
+}
+
+module.exports = app;
