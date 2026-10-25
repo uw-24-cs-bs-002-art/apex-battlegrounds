@@ -14,42 +14,10 @@ if (!process.env.TURSO_DATABASE_URL || !process.env.TURSO_AUTH_TOKEN) {
   throw new Error("Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN to connect to Turso.");
 }
 
-const databaseClient = createClient({
+const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
-const database = {
-  run(sql, parameters, callback) {
-    if (typeof parameters === "function") {
-      callback = parameters;
-      parameters = [];
-    }
-
-    databaseClient.execute({ sql, args: parameters }).then(
-      (result) => callback.call({
-        lastID: Number(result.lastInsertRowid || 0),
-        changes: result.rowsAffected,
-      }, null),
-      (error) => {
-        const callbackError = typeof error.code === "string" && error.code.startsWith("SQLITE_CONSTRAINT")
-          ? Object.assign(new Error(error.message), { code: "SQLITE_CONSTRAINT" })
-          : error;
-        callback.call({ lastID: 0, changes: 0 }, callbackError);
-      }
-    );
-  },
-  get(sql, parameters, callback) {
-    if (typeof parameters === "function") {
-      callback = parameters;
-      parameters = [];
-    }
-
-    databaseClient.execute({ sql, args: parameters }).then(
-      (result) => callback(null, result.rows[0]),
-      (error) => callback(error)
-    );
-  },
-};
 const sessions = new Map();
 const recoveryCodes = new Map();
 const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -75,15 +43,13 @@ app.get("/script.js", (request, response) => {
 });
 
 async function initializeDatabase() {
-  await databaseClient.execute({
-    sql: `CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`,
-  });
+  await db.execute(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    email TEXT UNIQUE,
+    password TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 }
 
 function normalizeEmail(email) {
@@ -165,42 +131,44 @@ function asyncRoute(handler) {
   };
 }
 
+function isConstraintError(error) {
+  return Boolean(error && typeof error.code === "string" && error.code.startsWith("SQLITE_CONSTRAINT"));
+}
+
 app.post("/api/register", asyncRoute(async (request, response) => {
-  const username = typeof request.body.username === "string" ? request.body.username.trim() : "";
-  const email = normalizeEmail(request.body.email);
-  const password = typeof request.body.password === "string" ? request.body.password : "";
+  try {
+    const username = typeof request.body.username === "string" ? request.body.username.trim() : "";
+    const email = normalizeEmail(request.body.email);
+    const password = typeof request.body.password === "string" ? request.body.password : "";
 
-  if (username.length < 2 || username.length > 30) {
-    return response.status(400).json({ error: "Username must be between 2 and 30 characters." });
-  }
-  if (!isValidEmail(email)) {
-    return response.status(400).json({ error: "Enter a valid email address." });
-  }
-  if (password.length < 8 || password.length > 72) {
-    return response.status(400).json({ error: "Password must be between 8 and 72 characters." });
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  database.run(
-    "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-    [username, email, passwordHash],
-    function (error) {
-      if (error) {
-        if (error.code === "SQLITE_CONSTRAINT") {
-          return response.status(409).json({ error: "An account with that email already exists." });
-        }
-        console.error("Could not create user:", error.message);
-        return response.status(500).json({ error: "Could not create your account." });
-      }
-
-      const user = { id: this.lastID, username, email };
-      startSession(response, user);
-      return response.status(201).json({ message: "Account created.", user });
+    if (username.length < 2 || username.length > 30) {
+      return response.status(400).json({ error: "Username must be between 2 and 30 characters." });
     }
-  );
+    if (!isValidEmail(email)) {
+      return response.status(400).json({ error: "Enter a valid email address." });
+    }
+    if (password.length < 8 || password.length > 72) {
+      return response.status(400).json({ error: "Password must be between 8 and 72 characters." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await db.execute({
+      sql: "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+      args: [username, email, passwordHash],
+    });
+    const user = { id: Number(result.lastInsertRowid), username, email };
+    startSession(response, user);
+    return response.status(201).json({ message: "Account created.", user });
+  } catch (error) {
+    console.error("Could not create user:", error);
+    if (isConstraintError(error)) {
+      return response.status(409).json({ error: "An account with that email already exists." });
+    }
+    return response.status(500).json({ error: "Could not create your account." });
+  }
 }));
 
-app.post("/api/login", (request, response) => {
+app.post("/api/login", asyncRoute(async (request, response) => {
   const email = normalizeEmail(request.body.email);
   const password = typeof request.body.password === "string" ? request.body.password : "";
 
@@ -208,22 +176,20 @@ app.post("/api/login", (request, response) => {
     return response.status(400).json({ error: "Enter a valid email and password." });
   }
 
-  database.get("SELECT id, username, email, password FROM users WHERE email = ?", [email], async (error, user) => {
-    if (error) {
-      console.error("Could not look up user:", error.message);
-      return response.status(500).json({ error: "Could not sign in right now." });
-    }
-
-    const passwordMatches = user && await bcrypt.compare(password, user.password);
-    if (!passwordMatches) {
-      return response.status(401).json({ error: "Email or password is incorrect." });
-    }
-
-    const safeUser = { id: user.id, username: user.username, email: user.email };
-    startSession(response, safeUser);
-    return response.json({ message: "Signed in.", user: safeUser });
+  const result = await db.execute({
+    sql: "SELECT id, username, email, password FROM users WHERE email = ?",
+    args: [email],
   });
-});
+  const user = result.rows[0];
+  const passwordMatches = user && await bcrypt.compare(password, user.password);
+  if (!passwordMatches) {
+    return response.status(401).json({ error: "Email or password is incorrect." });
+  }
+
+  const safeUser = { id: Number(user.id), username: user.username, email: user.email };
+  startSession(response, safeUser);
+  return response.json({ message: "Signed in.", user: safeUser });
+}));
 
 app.post("/api/forgot-password", asyncRoute(async (request, response) => {
   const email = normalizeEmail(request.body.email);
@@ -240,12 +206,11 @@ app.post("/api/forgot-password", asyncRoute(async (request, response) => {
   }
   const otp = crypto.randomInt(100000, 1000000).toString();
   const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-  const userExists = await new Promise((resolve, reject) => {
-    database.get("SELECT id FROM users WHERE email = ?", [email], (error, user) => {
-      if (error) return reject(error);
-      resolve(Boolean(user));
-    });
+  const userResult = await db.execute({
+    sql: "SELECT id FROM users WHERE email = ?",
+    args: [email],
   });
+  const userExists = userResult.rows.length > 0;
 
   if (userExists) {
     recoveryCodes.set(email, { hash: otpHash, expiresAt: Date.now() + OTP_LIFETIME_MS, attempts: 0 });
@@ -296,19 +261,17 @@ app.post("/api/verify-otp", asyncRoute(async (request, response) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  database.run("UPDATE users SET password = ? WHERE email = ?", [passwordHash, email], function (error) {
-    if (error) {
-      console.error("Could not update password:", error.message);
-      return response.status(500).json({ error: "Could not update your password." });
-    }
-    if (this.changes === 0) {
-      recoveryCodes.delete(email);
-      return response.status(400).json({ error: "That code is invalid or expired. Request a new one." });
-    }
-
-    recoveryCodes.delete(email);
-    return response.json({ message: "Password updated. You can now sign in." });
+  const updateResult = await db.execute({
+    sql: "UPDATE users SET password = ? WHERE email = ?",
+    args: [passwordHash, email],
   });
+  if (updateResult.rowsAffected === 0) {
+    recoveryCodes.delete(email);
+    return response.status(400).json({ error: "That code is invalid or expired. Request a new one." });
+  }
+
+  recoveryCodes.delete(email);
+  return response.json({ message: "Password updated. You can now sign in." });
 }));
 
 app.get("/api/me", (request, response) => {
