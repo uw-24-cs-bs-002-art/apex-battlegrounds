@@ -45,12 +45,23 @@ app.get("/script.js", (request, response) => {
 async function initializeDatabase() {
   await db.execute(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    email TEXT UNIQUE,
-    password TEXT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 }
+
+const databaseReady = initializeDatabase();
+app.use("/api", (request, response, next) => {
+  databaseReady.then(
+    () => next(),
+    (error) => {
+      console.error("Could not initialize the users table:", error);
+      response.status(500).json({ error: "Could not initialize the database." });
+    }
+  );
+});
 
 function normalizeEmail(email) {
   return typeof email === "string" ? email.trim().toLowerCase() : "";
@@ -288,7 +299,7 @@ app.post("/api/logout", (request, response) => {
 });
 
 if (require.main === module) {
-  initializeDatabase()
+  databaseReady
     .then(() => {
       app.listen(port, "0.0.0.0", () => {
         console.log(`Apex Battlegrounds is running at http://localhost:${port}`);
